@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Árbol del Saber</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#dfeef2;
+    --sky-bot:#f6ecd8;
+    --leaf-deep:#2f6b3c;
+    --leaf:#4c9a5a;
+    --leaf-fresh:#7fca7f;
+    --bark:#7a5230;
+    --bark-dark:#5c3d21;
+    --gold:#f4b740;
+    --gold-deep:#e79b1e;
+    --bloom:#f39ac0;
+    --ink:#2c3a2f;
+    --ink-soft:#5d6b60;
+    --card:#fffdf7;
+    --line:#e7e0cf;
+    --accent:#3b7a4e;
+    --shadow:0 14px 34px -18px rgba(46,70,50,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Nunito",system-ui,sans-serif;
+    color:var(--ink);
+    background:radial-gradient(120% 90% at 50% 0%, var(--sky-top) 0%, var(--sky-bot) 62%, #f1e4cd 100%);
+    min-height:100%;
+    display:flex;
+    padding:22px;
+    position:relative;
+  }
+  /* golden sky that warms up as points accumulate */
+  #skyGold{
+    position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 0%, #ffe9b8 0%, #ffd98a 55%, #f6c46a 100%);
+    transition:opacity 1.4s ease;
+  }
+  .app{width:min(1040px,100%);margin:auto}
+
+  /* ---------- Top bar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{
+    width:40px;height:40px;border-radius:50%;flex:none;position:relative;
+    background:radial-gradient(circle at 35% 30%, var(--leaf-fresh), var(--leaf-deep));
+    box-shadow:inset 0 -4px 8px rgba(0,0,0,.15);
+  }
+  .brand .mark::after{content:"";position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:4px;height:12px;background:var(--bark);border-radius:2px}
+  .brand h1{font-family:"Baloo 2",cursive;font-weight:800;font-size:1.42rem;line-height:1;margin:0;color:var(--leaf-deep)}
+  .brand p{margin:2px 0 0;font-size:.82rem;color:var(--ink-soft);font-weight:600}
+  .status{display:flex;align-items:center;gap:10px}
+  .pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 16px;box-shadow:var(--shadow);display:flex;align-items:baseline;gap:8px}
+  .pill .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:700}
+  .pill .v{font-family:"Baloo 2",cursive;font-weight:800;font-size:1.15rem;color:var(--accent)}
+  .pill.points .v{color:var(--gold-deep)}
+
+  /* ---------- Layout ---------- */
+  .stage{display:grid;grid-template-columns:1fr;gap:18px;align-items:stretch}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}
+
+  /* ---------- Tree panel ---------- */
+  .tree-panel{
+    background:linear-gradient(180deg,#eaf4ef 0%, #f3ecd7 100%);
+    display:flex;flex-direction:column;position:relative;padding:14px 14px 0;
+  }
+  .growth-tag{
+    position:absolute;top:14px;left:14px;z-index:5;
+    background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:999px;
+    font-weight:800;font-size:.78rem;color:var(--leaf-deep);padding:6px 12px;backdrop-filter:blur(3px);
+  }
+  svg.tree{width:100%;height:min(52vh,500px);display:block}
+  .grow{transition:transform .85s cubic-bezier(.22,1,.36,1), opacity .85s ease}
+  #trunk{transform-box:view-box;transform-origin:150px 300px}
+  #sprout{transform-box:view-box;transform-origin:150px 268px}
+  .fade{opacity:0;transition:opacity .9s ease .1s}
+  .fruit{transform-box:fill-box;transform-origin:center;transition:opacity .7s ease, transform .7s cubic-bezier(.34,1.56,.64,1)}
+
+  /* canopy clusters pop in one by one */
+  .cluster{
+    transform-box:fill-box;transform-origin:center;
+    transform:scale(0);opacity:0;
+    transition:transform .7s cubic-bezier(.34,1.7,.5,1), opacity .4s ease;
+  }
+  .cluster.on{transform:scale(1);opacity:1}
+
+  /* clouds drift */
+  .cloud{animation:drift linear infinite;opacity:.85}
+  @keyframes drift{from{transform:translateX(-120px)}to{transform:translateX(420px)}}
+
+  /* grass sway */
+  .tuft{transform-box:fill-box;transform-origin:bottom center;animation:sway 4s ease-in-out infinite}
+  @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(5deg)}}
+
+  /* sad sway on 0 points */
+  #treeGroup{transform-box:view-box;transform-origin:150px 300px}
+  #treeGroup.sad{animation:sadSway .9s ease-in-out}
+  @keyframes sadSway{0%,100%{transform:rotate(0)}30%{transform:rotate(-2.2deg)}65%{transform:rotate(1.6deg)}}
+
+  /* butterfly */
+  .butterfly{
+    position:absolute;width:26px;height:22px;z-index:4;left:50%;top:38%;
+    opacity:0;transition:opacity .8s ease;pointer-events:none;
+  }
+  .butterfly.on{opacity:1;animation:flutterPath 11s ease-in-out infinite}
+  .butterfly svg{width:100%;height:100%;animation:flap .28s ease-in-out infinite alternate;display:block}
+  @keyframes flap{from{transform:scaleX(1)}to{transform:scaleX(.45)}}
+  @keyframes flutterPath{
+    0%{transform:translate(-90px,-10px)}
+    20%{transform:translate(-30px,-60px)}
+    40%{transform:translate(60px,-30px)}
+    60%{transform:translate(80px,30px)}
+    80%{transform:translate(-10px,50px)}
+    100%{transform:translate(-90px,-10px)}
+  }
+
+  /* particle overlay inside the tree panel */
+  .fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:6}
+  .leafp{
+    position:absolute;width:12px;height:12px;border-radius:60% 0 60% 0;
+    background:var(--leaf-fresh);opacity:.95;
+  }
+  .leafp.dark{background:var(--leaf)}
+  .leafp.petal{background:var(--bloom);border-radius:50% 50% 50% 0}
+  .burst{animation:burst .8s ease-out forwards}
+  @keyframes burst{
+    0%{transform:translate(0,0) scale(.4) rotate(0);opacity:1}
+    100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(var(--rot));opacity:0}
+  }
+  .fall{animation:fall linear forwards}
+  @keyframes fall{
+    0%{transform:translate(0,0) rotate(0);opacity:.95}
+    100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}
+  }
+
+  /* floating +N that flies from award button toward the tree */
+  .flypts{
+    position:fixed;z-index:60;pointer-events:none;
+    font-family:"Baloo 2",cursive;font-weight:800;font-size:1.6rem;color:var(--accent);
+    text-shadow:0 2px 0 #fff;
+    transition:transform 1s cubic-bezier(.3,.7,.3,1), opacity 1s ease;
+  }
+  .flypts.gold{color:var(--gold-deep)}
+
+  .milestones{display:flex;justify-content:space-between;gap:4px;padding:10px 6px 12px}
+  .ms{flex:1;text-align:center;font-size:.62rem;font-weight:700;color:#b7ad97;line-height:1.25}
+  .ms .dot{width:11px;height:11px;border-radius:50%;background:#d9d0bc;margin:0 auto 5px;transition:background .4s ease, transform .4s ease}
+  .ms.on{color:var(--leaf-deep)}
+  .ms.on .dot{background:var(--leaf);transform:scale(1.25);box-shadow:0 0 0 4px rgba(76,154,90,.16)}
+  .ms.bloom.on .dot{background:var(--bloom)}
+  .ms.fruit.on .dot{background:var(--gold)}
+  .ms .dot.pulse{animation:pulse .8s ease}
+  @keyframes pulse{0%{transform:scale(1)}40%{transform:scale(2)}100%{transform:scale(1.25)}}
+
+  /* ---------- Play panel ---------- */
+  .play{display:flex;flex-direction:column;padding:22px 22px 20px}
+  .progress{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .bar{flex:1;height:9px;background:#ece5d4;border-radius:999px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--leaf-fresh),var(--leaf-deep));border-radius:999px;transition:width .4s ease}
+  .qnum{font-weight:800;font-size:.82rem;color:var(--ink-soft);white-space:nowrap}
+  .prompt{font-weight:800;color:var(--accent);font-size:1.02rem;margin:0 0 4px}
+  .prompt.sub{color:var(--ink-soft);font-size:.9rem;font-weight:700;margin-top:2px}
+  .prompt-wrap{margin-bottom:16px}
+
+  .words{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 18px}
+  .chip{
+    font-family:"Baloo 2",cursive;font-weight:700;font-size:1.5rem;
+    background:linear-gradient(180deg,#fff,#f4efe1);
+    border:2px solid var(--line);border-radius:18px;padding:14px 22px;color:var(--ink);
+    box-shadow:0 6px 0 -2px #eee5d0;
+    animation:chipIn .55s cubic-bezier(.34,1.56,.64,1) backwards;
+  }
+  .older .chip{font-size:1.32rem;padding:12px 18px}
+  @keyframes chipIn{from{transform:translateY(14px) scale(.85);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+  .chip.out{animation:chipOut .55s cubic-bezier(.55,0,.6,-0.4) forwards}
+  @keyframes chipOut{to{transform:translateY(-18px) scale(0);opacity:0}}
+
+  .reveal{
+    background:#f2f7f0;border:1px dashed #bcd4c2;border-radius:14px;
+    padding:0 14px;max-height:0;overflow:hidden;opacity:0;
+    transition:max-height .35s ease,opacity .35s ease,padding .35s ease;
+    font-weight:700;color:var(--leaf-deep);font-size:.92rem;
+  }
+  .reveal.show{max-height:220px;opacity:1;padding:12px 14px;margin-bottom:16px}
+  .reveal b{color:var(--gold-deep)}
+  .reveal .crit{
+    margin-top:8px;padding-top:8px;border-top:1px dashed #bcd4c2;
+    font-size:.78rem;color:var(--ink-soft);font-weight:700;line-height:1.45;
+  }
+  .link{background:none;border:none;color:var(--accent);font-weight:800;font-size:.85rem;cursor:pointer;padding:6px 2px;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+  .link:hover{color:var(--leaf-deep)}
+  .spacer{flex:1}
+
+  .awards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+  .awards.two{grid-template-columns:repeat(2,1fr)}
+  .awards.two .a2{display:none}
+  .award{
+    border:none;border-radius:18px;padding:16px 10px 14px;cursor:pointer;
+    font-family:"Nunito",sans-serif;font-weight:800;color:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    box-shadow:0 8px 0 -2px rgba(0,0,0,.14);transition:transform .12s ease, filter .15s ease;
+  }
+  .award .n{font-family:"Baloo 2",cursive;font-size:1.7rem;line-height:1}
+  .award .t{font-size:.76rem;opacity:.95;font-weight:700}
+  .award:hover{filter:brightness(1.05)}
+  .award:active{transform:translateY(3px);box-shadow:0 4px 0 -2px rgba(0,0,0,.14)}
+  .a2{background:linear-gradient(180deg,#5cb56b,#3b7a4e)}
+  .a1{background:linear-gradient(180deg,#f4c452,#e79b1e)}
+  .a0{background:linear-gradient(180deg,#c9a98f,#9b7b5f)}
+  .award.chosen{outline:4px solid rgba(59,122,78,.35);outline-offset:2px}
+
+  .navrow{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+  .ghost{background:none;border:none;color:var(--ink-soft);font-weight:800;font-size:.88rem;cursor:pointer;padding:8px 4px;border-radius:10px}
+  .ghost:disabled{opacity:.35;cursor:default}
+  .ghost:hover:not(:disabled){color:var(--ink)}
+  .lastnote{font-size:.8rem;font-weight:700;color:var(--ink-soft)}
+  .endtest{color:#b0665a}
+  .endtest:hover:not(:disabled){color:#8f4237}
+  .endtest.urgent{
+    color:#fff;background:linear-gradient(180deg,#d98a7c,#b0655a);
+    padding:8px 14px;border-radius:12px;animation:nudge 1.6s ease-in-out infinite;
+  }
+  @keyframes nudge{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  .endtest.confirming{color:#fff;background:linear-gradient(180deg,#c25b4c,#9c4032);padding:8px 14px;border-radius:12px;animation:none}
+
+  /* ---------- Start / End screens ---------- */
+  .screen{
+    grid-column:1 / -1;background:var(--card);border:1px solid var(--line);border-radius:24px;
+    box-shadow:var(--shadow);padding:38px 30px;text-align:center;position:relative;overflow:hidden;
+  }
+  .screen h2{font-family:"Baloo 2",cursive;font-size:1.9rem;color:var(--leaf-deep);margin:0 0 6px}
+  .screen p.lead{color:var(--ink-soft);font-weight:700;margin:0 auto 24px;max-width:440px}
+  .groups{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+  .group{
+    border:2px solid var(--line);background:#fffdf6;border-radius:20px;padding:22px 26px;cursor:pointer;
+    min-width:200px;text-align:left;transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .group:hover{transform:translateY(-3px);border-color:var(--leaf);box-shadow:var(--shadow)}
+  .group .age{font-family:"Baloo 2",cursive;font-size:1.5rem;color:var(--accent);line-height:1}
+  .group .desc{font-size:.86rem;color:var(--ink-soft);font-weight:700;margin-top:8px}
+  .group .ex{font-size:.78rem;color:#a99c82;font-weight:700;margin-top:10px;font-style:italic}
+  .modes{display:flex;gap:8px;margin-top:14px}
+  .modebtn{
+    flex:1;font-family:"Baloo 2",cursive;font-weight:700;font-size:.85rem;color:#fff;
+    background:linear-gradient(180deg,#5cb56b,#3b7a4e);border:none;border-radius:12px;
+    padding:10px 8px;cursor:pointer;box-shadow:0 5px 0 -2px #2f6b3c;transition:transform .12s ease;
+  }
+  .modebtn.impostor{background:linear-gradient(180deg,#f4c452,#e79b1e);box-shadow:0 5px 0 -2px #b97f14}
+  .modebtn:active{transform:translateY(2px)}
+
+  .btn{
+    font-family:"Baloo 2",cursive;font-weight:700;font-size:1.05rem;color:#fff;
+    background:linear-gradient(180deg,#5cb56b,#3b7a4e);border:none;border-radius:16px;
+    padding:14px 30px;cursor:pointer;box-shadow:0 8px 0 -2px #2f6b3c;transition:transform .12s ease;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 5px 0 -2px #2f6b3c}
+  .btn.alt{background:linear-gradient(180deg,#efe7d4,#e2d7bd);color:var(--ink);box-shadow:0 8px 0 -2px #cabfa2}
+
+  .finalscore{font-family:"Baloo 2",cursive;font-size:3.4rem;color:var(--gold-deep);line-height:1;margin:4px 0}
+  .finalscore span{font-size:1.4rem;color:var(--ink-soft)}
+  .endactions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:24px;position:relative;z-index:2}
+  .endtree{max-width:230px;margin:0 auto 10px;position:relative;z-index:2}
+
+  /* prize store */
+  .store{margin:22px auto 0;text-align:left;max-width:520px;position:relative;z-index:2}
+  .store h3{font-family:"Baloo 2",cursive;color:var(--leaf-deep);text-align:center;margin:0 0 2px;font-size:1.3rem}
+  .store .bal{text-align:center;font-weight:800;color:var(--gold-deep);margin-bottom:12px;font-size:.95rem}
+  .prize{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:#fffdf6;border-radius:14px;padding:9px 12px;margin-bottom:8px}
+  .prize.got{border-color:var(--leaf);background:#f2f9f0}
+  .prize .pe{font-size:1.35rem}
+  .prize .pn{flex:1;font-weight:800;font-size:.95rem}
+  .prize .pc{font-weight:800;color:var(--gold-deep);font-size:.82rem;white-space:nowrap}
+  .prize .qty{min-width:24px;text-align:center;font-family:"Baloo 2",cursive;font-weight:800;color:var(--accent);font-size:1.05rem}
+  .pbtn{border:none;border-radius:10px;width:32px;height:32px;font-weight:800;cursor:pointer;font-size:1.05rem;flex:none}
+  .pbtn.add{background:linear-gradient(180deg,#5cb56b,#3b7a4e);color:#fff;box-shadow:0 3px 0 -1px #2f6b3c}
+  .pbtn.sub{background:#eee5d0;color:var(--ink)}
+  .pbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
+  .pbtn:active:not(:disabled){transform:translateY(2px)}
+  .store .freebie{text-align:center;font-size:.82rem;font-weight:700;color:var(--ink-soft);margin-top:10px}
+
+  /* end-screen celebration */
+  .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+  .confetti i{
+    position:absolute;top:-24px;width:12px;height:12px;border-radius:60% 0 60% 0;
+    animation:confall linear forwards;
+  }
+  .confetti i.petal{border-radius:50% 50% 50% 0}
+  @keyframes confall{
+    0%{transform:translateY(0) rotate(0);opacity:1}
+    100%{transform:translateY(var(--h)) translateX(var(--sway)) rotate(var(--rot));opacity:.15}
+  }
+  .flyby{
+    position:absolute;top:16%;left:-70px;z-index:3;pointer-events:none;
+    animation:flyby 5.5s ease-in-out forwards;
+  }
+  @keyframes flyby{
+    0%{transform:translateX(0) translateY(0)}
+    50%{transform:translateX(52vw) translateY(-26px)}
+    100%{transform:translateX(110vw) translateY(6px)}
+  }
+
+  /* ---------- Vista pública (proyector) ---------- */
+  .publico .awards,.publico .navrow,.publico .link,.publico .reveal,
+  .publico .pbtn,.publico #startScreen,.publico #settingsScreen{display:none !important}
+  .publico .prize .qty{min-width:36px;font-size:1.2rem}
+  #pubWait .bigtree{font-size:3.2rem;margin-bottom:6px}
+
+  .hidden{display:none !important}
+
+  /* ---------- Settings ---------- */
+  .stabs{display:flex;gap:10px;justify-content:center;margin-top:4px}
+  .stab{
+    font-family:"Baloo 2",cursive;font-weight:700;font-size:.95rem;cursor:pointer;
+    border:2px solid var(--line);background:#fffdf6;color:var(--ink-soft);
+    border-radius:999px;padding:8px 20px;transition:all .15s ease;
+  }
+  .stab.on{background:linear-gradient(180deg,#5cb56b,#3b7a4e);border-color:transparent;color:#fff}
+  .settings-list{
+    max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:12px;
+    padding:4px 2px;margin:16px 0 12px;text-align:left;
+  }
+  .srow{border:1.5px solid var(--line);border-radius:16px;padding:12px 14px;background:#fffdf6}
+  .srow-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .sidx{font-weight:800;color:var(--accent);font-size:.85rem}
+  .sdel{background:none;border:none;color:#b0665a;font-weight:800;cursor:pointer;font-size:.78rem;text-decoration:underline;text-underline-offset:2px}
+  .sdel:hover{color:#8f4237}
+  .swords{display:flex;gap:10px;flex-wrap:wrap}
+  .scell{flex:1;min-width:130px}
+  .srow input[type="text"]{
+    width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;
+    font-family:"Nunito",sans-serif;font-weight:700;font-size:.95rem;background:#fff;color:var(--ink);
+  }
+  .srow input[type="text"]:focus{outline:none;border-color:var(--leaf)}
+  .srow input.empty{border-color:#c25b4c;background:#fdf3f1}
+  .soddlab{display:flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;color:var(--ink-soft);margin-top:5px;cursor:pointer}
+  .soddlab input{accent-color:#b0665a}
+  .srel{margin-top:10px}
+  .serr{color:#9c4032;font-weight:800;font-size:.85rem;min-height:1.2em;margin-top:8px}
+  .sactions{display:flex;gap:12px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .startextra{margin-top:18px}
+  .oralToggle{
+    display:flex;gap:8px;align-items:center;justify-content:center;
+    font-weight:800;font-size:.88rem;color:var(--ink-soft);margin-bottom:14px;cursor:pointer;
+  }
+  .oralToggle input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+  .listen{
+    display:flex;align-items:center;gap:12px;width:100%;
+    font-family:"Baloo 2",cursive;font-size:1.2rem;font-weight:700;color:var(--ink-soft);
+    background:#f4f0e3;border:2px dashed #d8cfb8;border-radius:16px;padding:20px 22px;
+  }
+  .listen .ear{font-size:1.6rem}
+  #peekBtn{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+
+  @media (max-width:760px){
+    body{padding:14px}
+    .stage{grid-template-columns:1fr}
+    .tree-panel{order:-1}
+    svg.tree{max-height:300px}
+    .brand h1{font-size:1.25rem}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,.grow,.fade,.fruit,.cluster,.bar>i,.reveal,.group,.award,.btn{transition:none !important;animation:none !important}
+  }
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:12px}
+</style>
+</head>
+<body>
+<div id="skyGold"></div>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>El Árbol del Saber</h1>
+        <p>Responde y haz crecer tu árbol</p>
+      </div>
+    </div>
+    <div class="status" id="status" style="visibility:hidden">
+      <div class="pill points"><span class="k">Puntos</span><span class="v" id="scoreVal">0</span></div>
+      <div class="pill"><span class="k">Ronda</span><span class="v" id="roundVal">1/10</span></div>
+    </div>
+    <div class="pill" id="projPill" style="display:none"><span class="k">Proyector</span><span class="v" id="projV">&#8212;</span></div>
+  </div>
+
+  <!-- START -->
+  <div class="screen" id="startScreen">
+    <h2>¡Vamos a hacer crecer un árbol!</h2>
+    <p class="lead">Elige el grupo de edad. En cada ronda verás las palabras en pantalla; tú le das <b>2, 1 o 0 puntos</b> según su respuesta y el árbol crece.</p>
+    <div class="groups">
+      <div class="group" tabindex="0" data-group="younger">
+        <div class="age">6 a 11 años</div>
+        <div class="desc">Dos palabras relacionadas. Pregunta: ¿en qué se parecen?</div>
+        <div class="ex">ej. Guineo · China</div>
+      </div>
+      <div class="group" data-group="older">
+        <div class="age">12 a 16 años</div>
+        <div class="desc">Elige el modo: pares clásicos (formato fiel a Semejanzas) o impostor (tres palabras, dos pasos).</div>
+        <div class="modes">
+          <button class="modebtn" data-mode="classic" type="button">Modo clásico</button>
+          <button class="modebtn impostor" data-mode="impostor" type="button">Modo impostor</button>
+        </div>
+      </div>
+    </div>
+    <div class="startextra">
+      <label class="oralToggle"><input type="checkbox" id="oralChk"> &#128066; Modo oral: el evaluado no ve las palabras (se leen en voz alta)</label>
+      <button class="btn alt" id="settingsBtn" type="button">&#9998; Editar palabras</button>
+      <button class="btn alt" id="openPublicBtn" type="button">&#128250; Abrir vista pública (proyector)</button>
+    </div>
+  </div>
+
+  <!-- PUBLIC WAITING SCREEN -->
+  <div class="screen hidden" id="pubWait">
+    <div class="bigtree">&#127795;</div>
+    <h2 id="pubWaitTitle">Conectando&hellip;</h2>
+    <p class="lead" id="pubWaitMsg">Abre el juego en la ventana del evaluador para comenzar.</p>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen hidden" id="settingsScreen">
+    <h2>Editar palabras</h2>
+    <p class="lead">Cambia, añade o elimina preguntas de cada grupo. Los cambios aplican hasta recargar la página.</p>
+    <div class="stabs">
+      <button class="stab on" data-tab="younger" type="button">6 a 11</button>
+      <button class="stab" data-tab="olderClassic" type="button">12 a 16 &middot; clásico</button>
+      <button class="stab" data-tab="older" type="button">12 a 16 &middot; impostor</button>
+    </div>
+    <div class="settings-list" id="slist"></div>
+    <button class="btn alt" id="sAdd" type="button">+ Añadir pregunta</button>
+    <div class="serr" id="sErr"></div>
+    <div class="sactions">
+      <button class="btn" id="sSave" type="button">Guardar</button>
+      <button class="btn alt" id="sCancel" type="button">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="stage hidden" id="gameStage">
+    <div class="panel tree-panel" id="treePanel">
+      <svg class="tree" id="treeSvg" viewBox="0 0 300 340" xmlns="http://www.w3.org/2000/svg" aria-label="Árbol que crece con los puntos">
+        <!-- clouds -->
+        <g class="cloud" style="animation-duration:38s">
+          <ellipse cx="40" cy="46" rx="26" ry="11" fill="#ffffff" opacity=".9"/>
+          <ellipse cx="60" cy="40" rx="18" ry="9" fill="#ffffff" opacity=".9"/>
+        </g>
+        <g class="cloud" style="animation-duration:55s;animation-delay:-20s">
+          <ellipse cx="0" cy="86" rx="20" ry="8" fill="#ffffff" opacity=".7"/>
+          <ellipse cx="16" cy="81" rx="13" ry="6" fill="#ffffff" opacity=".7"/>
+        </g>
+
+        <!-- sun -->
+        <circle id="sun" class="fade" cx="248" cy="52" r="26" fill="#f7d774"/>
+        <circle id="sunGlow" class="fade" cx="248" cy="52" r="38" fill="#f7d774" opacity="0"/>
+
+        <!-- birds -->
+        <g id="birds" class="fade">
+          <path d="M60 60 q8 -9 16 0 q8 -9 16 0" fill="none" stroke="#4a5a4d" stroke-width="3" stroke-linecap="round"/>
+          <path d="M96 44 q6 -7 12 0 q6 -7 12 0" fill="none" stroke="#4a5a4d" stroke-width="2.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- ground -->
+        <ellipse cx="150" cy="312" rx="128" ry="20" fill="#8a6a4a"/>
+        <ellipse cx="150" cy="308" rx="128" ry="16" fill="#9c7c58"/>
+        <path d="M40 308 q30 -8 60 -2 q30 6 60 -1 q30 -6 60 2 q18 4 20 6 l0 12 q-140 6 -280 0 z" fill="#7fae63" opacity=".55"/>
+
+        <!-- grass tufts -->
+        <g fill="#6fa457">
+          <path class="tuft" style="animation-delay:-1s" d="M64 306 q-2 -12 2 -16 q3 6 2 16 z M70 306 q0 -10 5 -13 q1 6 -1 13 z"/>
+          <path class="tuft" style="animation-delay:-2.4s" d="M228 306 q-2 -12 2 -16 q3 6 2 16 z M234 306 q0 -10 5 -13 q1 6 -1 13 z"/>
+          <path class="tuft" style="animation-delay:-.5s" d="M118 310 q-2 -10 1 -13 q3 5 2 13 z"/>
+          <path class="tuft" style="animation-delay:-3.2s" d="M182 310 q-2 -10 1 -13 q3 5 2 13 z"/>
+        </g>
+
+        <g id="treeGroup">
+          <!-- sprout -->
+          <g id="sprout" class="grow">
+            <path d="M150 300 q-16 -14 -26 -4 q10 14 26 6" fill="var(--leaf-fresh)"/>
+            <path d="M150 300 q16 -14 26 -4 q-10 14 -26 6" fill="var(--leaf)"/>
+          </g>
+
+          <!-- trunk -->
+          <g id="trunk" class="grow">
+            <path d="M142 302 q-2 -60 5 -110 q3 -22 8 0 q7 50 3 110 z" fill="var(--bark)"/>
+            <path d="M150 300 q0 -60 4 -104" fill="none" stroke="var(--bark-dark)" stroke-width="2.4" opacity=".5" stroke-linecap="round"/>
+            <path d="M150 220 q-16 -6 -26 -18" fill="none" stroke="var(--bark)" stroke-width="6" stroke-linecap="round"/>
+            <path d="M152 205 q16 -6 26 -20" fill="none" stroke="var(--bark)" stroke-width="6" stroke-linecap="round"/>
+          </g>
+
+          <!-- canopy: clusters pop in one at a time, bottom-up -->
+          <g id="canopy">
+            <circle class="cluster" cx="150" cy="182" r="30" fill="var(--leaf-deep)"/>
+            <circle class="cluster" cx="116" cy="172" r="28" fill="var(--leaf)"/>
+            <circle class="cluster" cx="186" cy="170" r="28" fill="var(--leaf)"/>
+            <circle class="cluster" cx="150" cy="150" r="34" fill="var(--leaf-deep)"/>
+            <circle class="cluster" cx="112" cy="146" r="26" fill="var(--leaf-fresh)"/>
+            <circle class="cluster" cx="188" cy="144" r="26" fill="var(--leaf-fresh)"/>
+            <circle class="cluster" cx="132" cy="122" r="26" fill="var(--leaf)"/>
+            <circle class="cluster" cx="168" cy="120" r="26" fill="var(--leaf)"/>
+            <circle class="cluster" cx="150" cy="106" r="26" fill="var(--leaf-fresh)"/>
+            <circle class="cluster" cx="150" cy="132" r="24" fill="var(--leaf-fresh)"/>
+
+            <!-- flowers -->
+            <g id="flowers" class="fade">
+              <g fill="var(--bloom)">
+                <circle cx="118" cy="130" r="6"/><circle cx="176" cy="120" r="6"/>
+                <circle cx="150" cy="168" r="6"/><circle cx="120" cy="176" r="5.5"/>
+                <circle cx="192" cy="158" r="5.5"/><circle cx="150" cy="108" r="5.5"/>
+              </g>
+              <g fill="#fff3f8"><circle cx="118" cy="130" r="2.4"/><circle cx="176" cy="120" r="2.4"/><circle cx="150" cy="168" r="2.4"/><circle cx="120" cy="176" r="2.2"/><circle cx="192" cy="158" r="2.2"/><circle cx="150" cy="108" r="2.2"/></g>
+            </g>
+
+            <!-- fruit -->
+            <g id="fruitG">
+              <circle class="fruit" cx="126" cy="152" r="8" fill="var(--gold)"/>
+              <circle class="fruit" cx="172" cy="146" r="8" fill="var(--gold-deep)"/>
+              <circle class="fruit" cx="150" cy="184" r="8" fill="var(--gold)"/>
+              <circle class="fruit" cx="196" cy="172" r="7" fill="var(--gold)"/>
+              <circle class="fruit" cx="106" cy="172" r="7" fill="var(--gold-deep)"/>
+            </g>
+          </g>
+        </g>
+      </svg>
+
+      <!-- butterfly appears after flowers -->
+      <div class="butterfly" id="butterfly" aria-hidden="true">
+        <svg viewBox="0 0 26 22">
+          <ellipse cx="8" cy="8" rx="7" ry="6.5" fill="#f39ac0"/>
+          <ellipse cx="18" cy="8" rx="7" ry="6.5" fill="#f7b7d3"/>
+          <ellipse cx="9" cy="16" rx="5" ry="4.5" fill="#f7b7d3"/>
+          <ellipse cx="17" cy="16" rx="5" ry="4.5" fill="#f39ac0"/>
+          <rect x="12" y="4" width="2.4" height="15" rx="1.2" fill="#5c3d21"/>
+        </svg>
+      </div>
+
+      <div class="fx" id="fx"></div>
+
+    </div>
+
+    <div class="panel play">
+      <div class="progress">
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="qnum" id="qNum">Pregunta 1 de 10</div>
+      </div>
+
+      <div class="prompt-wrap" id="promptWrap"></div>
+      <div class="words" id="words"></div>
+
+      <button class="link" id="peekBtn" type="button" style="display:none">&#128065; Ver palabras (mantén presionado)</button>
+      <button class="link" id="revealBtn" type="button">Ver respuesta</button>
+      <div class="reveal" id="reveal"></div>
+
+      <div class="spacer"></div>
+
+      <div class="awards">
+        <button class="award a2" data-pts="2"><span class="n">2</span><span class="t">Muy bien</span></button>
+        <button class="award a1" data-pts="1"><span class="n">1</span><span class="t">Casi</span></button>
+        <button class="award a0" data-pts="0"><span class="n">0</span><span class="t">Todavía no</span></button>
+      </div>
+
+      <div class="navrow">
+        <button class="ghost" id="backBtn" type="button" disabled>&larr; Atrás</button>
+        <span class="lastnote" id="lastNote"></span>
+        <button class="ghost endtest" id="endTestBtn" type="button">Terminar prueba</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- END -->
+  <div class="screen hidden" id="endScreen">
+    <div class="confetti" id="confetti"></div>
+    <div class="endtree" id="endTreeHolder"></div>
+    <h2 id="endTitle">¡Terminaste!</h2>
+    <div class="finalscore"><span id="endScore">0</span><span> / <span id="endMaxN">20</span></span></div>
+    <p class="lead" id="endMsg"></p>
+    <div class="store" id="store"></div>
+    <div class="endactions">
+      <button class="btn" id="againBtn" type="button">Jugar otra vez</button>
+      <button class="btn alt" id="switchBtn" type="button">Cambiar grupo</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = {
+  younger: [
+    { words:["Rojo","Azul"], rel:"Ambos son colores." },
+    { words:["Agua","Jugo"], rel:"Ambos son bebidas / líquidos que tomamos." },
+    { words:["Guineo","China"], rel:"Ambos son frutas." },
+    { words:["Pájaro","Mariposa"], rel:"Ambos vuelan / tienen alas." },
+    { words:["Camisa","Pantalón"], rel:"Ambos son ropa que usamos para vestirnos." },
+    { words:["Perro","Gato"], rel:"Ambos son animales / mascotas." },
+    { words:["Carro","Guagua"], rel:"Ambos son medios de transporte / vehículos." },
+    { words:["Hermano","Hermana"], rel:"Ambos son miembros de la familia." },
+    { words:["Otoño","Primavera"], rel:"Ambas son estaciones del año." },
+    { words:["Dulce","Salado"], rel:"Ambos son sabores." }
+  ],
+  older: [
+    { words:["Perro","Gato","Mesa"], odd:"Mesa", rel:"Los otros dos son animales / mascotas." },
+    { words:["Carro","Guagua","Avión"], odd:"Avión", rel:"Los otros dos son transporte terrestre." },
+    { words:["Hermano","Hermana","Vecino"], odd:"Vecino", rel:"Los otros dos son miembros de la familia." },
+    { words:["Otoño","Primavera","Noche"], odd:"Noche", rel:"Las otras dos son estaciones del año." },
+    { words:["Dulce","Salado","Caliente"], odd:"Caliente", rel:"Los otros dos son sabores." },
+    { words:["Cemento","Bloques","Plástico"], odd:"Plástico", rel:"Los otros dos son materiales de construcción." },
+    { words:["Tristeza","Alegría","Cansancio"], odd:"Cansancio", rel:"Las otras dos son emociones / sentimientos." },
+    { words:["Hombro","Codo","Zapato"], odd:"Zapato", rel:"Los otros dos son partes del cuerpo." },
+    { words:["Cobre","Bronce","Madera"], odd:"Madera", rel:"Los otros dos son metales." },
+    { words:["Sofá","Escritorio","Televisor"], odd:"Televisor", rel:"Los otros dos son muebles." }
+  ],
+  olderClassic: [
+    { words:["Sofá","Escritorio"], rel:"Ambos son muebles." },
+    { words:["Hombro","Codo"], rel:"Ambos son partes del cuerpo / del brazo." },
+    { words:["Cemento","Bloques"], rel:"Ambos son materiales de construcción." },
+    { words:["Cobre","Bronce"], rel:"Ambos son metales." },
+    { words:["Tristeza","Alegría"], rel:"Ambas son emociones / sentimientos." },
+    { words:["Reloj","Calendario"], rel:"Ambos sirven para medir el tiempo." },
+    { words:["Hielo","Vapor"], rel:"Ambos son estados del agua." },
+    { words:["Semilla","Huevo"], rel:"De ambos nace un ser vivo / son inicios de la vida." },
+    { words:["Poema","Estatua"], rel:"Ambos son obras de arte / creaciones." },
+    { words:["Principio","Fin"], rel:"Ambos son partes / extremos de un proceso." }
+  ]
+};
+const MAX = 20;
+const RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const PUBLIC = new URLSearchParams(location.search).get("vista")==="publico";
+let group = null, mode = null, items = [], idx = 0, awards = [], phase = 1;
+let oral = false, curWords = [], savedWordsHTML = null;
+let screen = "start", pubGrowth = 0, finalPoints = 0, lastCelebrate = false;
+const isImpostor = ()=> group==="older" && mode==="impostor";
+const chipsHTML = (ws, anim=true)=> ws.map((w,i)=>
+  `<span class="chip"${anim?` style="animation-delay:${i*90}ms"`:""}>${w}</span>`).join("");
+const LISTEN = '<div class="listen"><span class="ear">&#128066;</span> Escucha con atención las palabras&hellip;</div>';
+function setWords(ws, anim=true){
+  curWords = ws;
+  savedWordsHTML = null;
+  $("#words").innerHTML = oral ? LISTEN : chipsHTML(ws, anim);
+}
+
+const $ = s => document.querySelector(s);
+const status = $("#status");
+
+/* ---------- Settings: edit words ---------- */
+let W = null, sTab = "younger";
+
+$("#settingsBtn").addEventListener("click", ()=>{
+  W = JSON.parse(JSON.stringify(DATA));
+  W.older.forEach(q=>{ q._oi = Math.max(0, q.words.indexOf(q.odd)); });
+  sTab = "younger";
+  $("#sErr").textContent = "";
+  $("#startScreen").classList.add("hidden");
+  $("#settingsScreen").classList.remove("hidden");
+  renderSettings();
+});
+
+document.querySelectorAll(".stab").forEach(b=>{
+  b.addEventListener("click", ()=>{ sTab = b.dataset.tab; renderSettings(); });
+});
+
+function renderSettings(){
+  document.querySelectorAll(".stab").forEach(b=>b.classList.toggle("on", b.dataset.tab===sTab));
+  const list = $("#slist");
+  list.innerHTML = "";
+  W[sTab].forEach((q,qi)=>{
+    const row = document.createElement("div");
+    row.className = "srow";
+
+    const head = document.createElement("div");
+    head.className = "srow-head";
+    const n = document.createElement("span");
+    n.className = "sidx"; n.textContent = "Pregunta " + (qi+1);
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "sdel"; del.textContent = "Eliminar";
+    del.addEventListener("click", ()=>{
+      if(W[sTab].length > 1){ W[sTab].splice(qi,1); renderSettings(); }
+      else $("#sErr").textContent = "Debe quedar al menos una pregunta.";
+    });
+    head.append(n, del);
+    row.appendChild(head);
+
+    const wwrap = document.createElement("div");
+    wwrap.className = "swords";
+    q.words.forEach((w,wi)=>{
+      const cell = document.createElement("div");
+      cell.className = "scell";
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.value = w; inp.placeholder = "Palabra " + (wi+1);
+      inp.addEventListener("input", ()=>{ W[sTab][qi].words[wi] = inp.value; inp.classList.remove("empty"); });
+      cell.appendChild(inp);
+      if(sTab==="older"){
+        const lab = document.createElement("label");
+        lab.className = "soddlab";
+        const r = document.createElement("input");
+        r.type = "radio"; r.name = "odd-" + qi; r.checked = (q._oi === wi);
+        r.addEventListener("change", ()=>{ W[sTab][qi]._oi = wi; });
+        lab.append(r, document.createTextNode("impostor"));
+        cell.appendChild(lab);
+      }
+      wwrap.appendChild(cell);
+    });
+    row.appendChild(wwrap);
+
+    const rel = document.createElement("input");
+    rel.type = "text"; rel.className = "srel";
+    rel.value = q.rel || "";
+    rel.placeholder = "Respuesta esperada (aparece en \u201cVer respuesta\u201d)";
+    rel.addEventListener("input", ()=>{ W[sTab][qi].rel = rel.value; });
+    row.appendChild(rel);
+
+    list.appendChild(row);
+  });
+}
+
+$("#sAdd").addEventListener("click", ()=>{
+  if(sTab==="older") W.older.push({words:["","",""], odd:"", rel:"", _oi:0});
+  else W[sTab].push({words:["",""], rel:""});
+  renderSettings();
+  const list = $("#slist");
+  list.scrollTop = list.scrollHeight;
+});
+
+$("#sSave").addEventListener("click", ()=>{
+  let ok = true, badTab = null;
+  for(const g of ["younger","olderClassic","older"]){
+    for(const q of W[g]){
+      q.words = q.words.map(x=>x.trim());
+      q.rel = (q.rel||"").trim();
+      if(q.words.some(x=>!x)){ ok = false; if(!badTab) badTab = g; }
+    }
+  }
+  if(!ok){
+    sTab = badTab;
+    renderSettings();
+    document.querySelectorAll("#slist .scell input").forEach(i=>{ if(!i.value.trim()) i.classList.add("empty"); });
+    $("#sErr").textContent = "Hay palabras vacías: complétalas o elimina esa pregunta.";
+    return;
+  }
+  for(const q of W.older){ q.odd = q.words[q._oi ?? 0]; delete q._oi; }
+  DATA.younger = W.younger;
+  DATA.older = W.older;
+  DATA.olderClassic = W.olderClassic;
+  closeSettings();
+});
+
+$("#sCancel").addEventListener("click", closeSettings);
+
+function closeSettings(){
+  W = null;
+  $("#sErr").textContent = "";
+  $("#settingsScreen").classList.add("hidden");
+  $("#startScreen").classList.remove("hidden");
+}
+
+/* ---------- Start ---------- */
+const youngerCard = document.querySelector('.group[data-group="younger"]');
+youngerCard.addEventListener("click", ()=> startGame("younger"));
+youngerCard.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();startGame("younger");} });
+document.querySelectorAll(".modebtn").forEach(b=>{
+  b.addEventListener("click", ()=> startGame("older", b.dataset.mode));
+});
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function startGame(g, m){
+  group = g;
+  mode = m || null;
+  oral = $("#oralChk").checked;
+  screen = "game";
+  if(g==="younger") items = DATA.younger;
+  else if(m==="classic") items = DATA.olderClassic;
+  else items = DATA.older.map(q=> ({...q, words: shuffle([...q.words])})); // impostor: shuffle positions
+  idx = 0;
+  phase = 1;
+  locked = false;
+  awards = items.map(()=> isImpostor() ? {p1:null, p2:null} : null);
+  resetEndTestBtn();
+  $("#startScreen").classList.add("hidden");
+  $("#endScreen").classList.add("hidden");
+  $("#gameStage").classList.remove("hidden");
+  $("#confetti").innerHTML = "";
+  status.style.visibility = "visible";
+  renderQuestion();
+  updateTree(0, true);
+}
+
+/* ---------- Render question ---------- */
+function renderQuestion(){
+  const item = items[idx];
+  const wordsEl = $("#words");
+  const promptWrap = $("#promptWrap");
+  const awardsEl = document.querySelector(".awards");
+  wordsEl.className = "words" + (isImpostor() ? " older" : "");
+  awardsEl.classList.toggle("two", isImpostor());
+
+  const reveal = $("#reveal");
+  reveal.classList.remove("show");
+  $("#revealBtn").textContent = "Ver respuesta";
+
+  if(!isImpostor()){
+    promptWrap.innerHTML = '<p class="prompt">¿En qué se parecen estas palabras?</p>';
+    setWords(item.words);
+    reveal.innerHTML = `Respuesta esperada: ${item.rel}` +
+      `<div class="crit"><b>2</b> = clasificación mayor pertinente &middot; <b>1</b> = propiedad común o clasificación menos pertinente &middot; <b>0</b> = no pertinente / diferencias / incorrecta</div>`;
+    $("#lastNote").textContent = awards[idx]!==null ? `Le diste ${awards[idx]} ${awards[idx]===1?"punto":"puntos"}` : "";
+    document.querySelector(".a1 .t").textContent = "Casi";
+  } else {
+    document.querySelector(".a1 .t").textContent = "Muy bien";
+    if(phase===1){
+      promptWrap.innerHTML = '<p class="prompt">¿Cuál es el impostor?</p>';
+      setWords(item.words);
+      reveal.innerHTML = `Impostor: <b>${item.odd}</b>` +
+        `<div class="crit"><b>1</b> = identifica al impostor &middot; <b>0</b> = no lo identifica (termina la ronda)</div>`;
+      $("#lastNote").textContent = "";
+    } else {
+      promptWrap.innerHTML = '<p class="prompt">¿En qué se relacionan estas dos palabras?</p>';
+      setWords(item.words.filter(w=>w!==item.odd), false);
+      reveal.innerHTML = `Respuesta esperada: ${item.rel}` +
+        `<div class="crit"><b>1</b> = relación pertinente &middot; <b>0</b> = no pertinente / incorrecta</div>`;
+      $("#lastNote").textContent = "+1 por encontrar al impostor";
+    }
+  }
+
+  $("#qNum").textContent = `Pregunta ${idx+1} de ${items.length}`;
+  $("#peekBtn").style.display = oral ? "" : "none";
+  $("#roundVal").textContent = `${idx+1}/${items.length}`;
+  $("#barFill").style.width = (idx/items.length)*100 + "%";
+  $("#backBtn").disabled = idx===0 && !(isImpostor() && phase===2);
+
+  document.querySelectorAll(".award").forEach(b=>b.classList.remove("chosen"));
+  if(!isImpostor() && awards[idx]!==null){
+    document.querySelectorAll(".award").forEach(b=>{
+      b.classList.toggle("chosen", +b.dataset.pts===awards[idx]);
+    });
+  }
+  refreshScore();
+}
+
+$("#revealBtn").addEventListener("click", ()=>{
+  const r = $("#reveal");
+  r.classList.toggle("show");
+  $("#revealBtn").textContent = r.classList.contains("show") ? "Ocultar respuesta" : "Ver respuesta";
+});
+
+/* hold-to-peek: words show only while the evaluator presses */
+const peekBtn = $("#peekBtn");
+function showPeek(){
+  if(!oral || savedWordsHTML!==null) return;
+  const w = $("#words");
+  savedWordsHTML = w.innerHTML;
+  w.innerHTML = chipsHTML(curWords, false);
+}
+function hidePeek(){
+  if(savedWordsHTML===null) return;
+  $("#words").innerHTML = savedWordsHTML;
+  savedWordsHTML = null;
+}
+peekBtn.addEventListener("pointerdown", e=>{ e.preventDefault(); showPeek(); });
+["pointerup","pointerleave","pointercancel"].forEach(ev=> peekBtn.addEventListener(ev, hidePeek));
+peekBtn.addEventListener("contextmenu", e=>e.preventDefault());
+window.addEventListener("blur", hidePeek);
+
+/* ---------- Awarding ---------- */
+let locked = false;
+document.querySelectorAll(".award").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    if(locked) return;
+    locked = true;
+    const pts = +btn.dataset.pts;
+    document.querySelectorAll(".award").forEach(b=>b.classList.toggle("chosen", b===btn));
+
+    if(!isImpostor()){
+      awards[idx] = pts;
+      refreshScore();
+      reactToAward(pts, btn);
+      updateEndTestState();
+      setTimeout(nextRound, 700);
+      return;
+    }
+
+    // impostor mode: two phases, 1 point each
+    if(phase===1){
+      awards[idx].p1 = pts;
+      refreshScore();
+      if(pts===1){
+        reactToAward(1, btn);
+        // the impostor leaves, then the second question pops up
+        const impChip = [...document.querySelectorAll("#words .chip")]
+          .find(c=>c.textContent===items[idx].odd);
+        if(impChip) impChip.classList.add("out");
+        setTimeout(()=>{ phase = 2; renderQuestion(); locked = false; }, 620);
+      } else {
+        // 0 on the impostor: the round ends
+        reactToAward(0, btn);
+        updateEndTestState();
+        setTimeout(nextRound, 700);
+      }
+    } else {
+      awards[idx].p2 = pts;
+      refreshScore();
+      reactToAward(pts, btn);
+      updateEndTestState();
+      setTimeout(nextRound, 700);
+    }
+  });
+});
+
+function nextRound(){
+  if(idx < items.length-1){ idx++; phase = 1; renderQuestion(); }
+  else finish();
+  locked = false;
+}
+
+/* ---------- Terminate (discontinue) ---------- */
+const DISCONTINUE_STREAK = 3; // consecutive 0s that make the button pulse
+let confirmingEnd = false;
+
+function zeroStreak(){
+  let streak = 0;
+  for(const a of awards){
+    if(!qDone(a)) break;
+    if(qTotal(a) === 0) streak++; else streak = 0;
+  }
+  return streak;
+}
+function updateEndTestState(){
+  const btn = $("#endTestBtn");
+  btn.classList.toggle("urgent", zeroStreak() >= DISCONTINUE_STREAK && !confirmingEnd);
+}
+function resetEndTestBtn(){
+  confirmingEnd = false;
+  const btn = $("#endTestBtn");
+  btn.classList.remove("confirming");
+  btn.textContent = "Terminar prueba";
+  updateEndTestState();
+}
+$("#endTestBtn").addEventListener("click", ()=>{
+  const btn = $("#endTestBtn");
+  if(!confirmingEnd){
+    confirmingEnd = true;
+    btn.classList.remove("urgent");
+    btn.classList.add("confirming");
+    btn.textContent = "¿Confirmar? Toca de nuevo";
+    setTimeout(()=>{ if(confirmingEnd) resetEndTestBtn(); }, 3500);
+  } else {
+    resetEndTestBtn();
+    finish(true);
+  }
+});
+
+$("#backBtn").addEventListener("click", ()=>{
+  if(isImpostor() && phase===2){
+    // redo the current round from the impostor step
+    awards[idx] = {p1:null, p2:null};
+    phase = 1;
+    renderQuestion();
+    return;
+  }
+  if(idx>0){
+    idx--;
+    if(isImpostor()){ awards[idx] = {p1:null, p2:null}; phase = 1; }
+    renderQuestion();
+  }
+});
+
+function qTotal(a){
+  if(a===null || a===undefined) return 0;
+  if(typeof a==="number") return a;
+  return (a.p1||0) + (a.p2||0);
+}
+function qDone(a){
+  if(a===null || a===undefined) return false;
+  if(typeof a==="number") return true;
+  return a.p1!==null && (a.p1===0 || a.p2!==null);
+}
+function totalScore(){ return awards.reduce((s,a)=> s + qTotal(a), 0); }
+/* growth is driven by progress, not points — the tree always grows */
+function growthProgress(){
+  if(PUBLIC) return pubGrowth;
+  let p = 0;
+  for(const a of awards){
+    if(a===null || a===undefined) continue;
+    if(typeof a==="number"){ p += 1; continue; }
+    if(a.p1===null) continue;
+    if(a.p1===0){ p += 1; }            // round ended early: full step
+    else p += (a.p2===null ? 0.5 : 1); // impostor found: half now, half after relación
+  }
+  return Math.min(1, p / awards.length || 0);
+}
+function refreshScore(){
+  const t = totalScore();
+  $("#scoreVal").textContent = t;
+  updateTree(t);
+  sendState();
+}
+
+/* ---------- Award feedback: +N fly-off, bursts, sad sway ---------- */
+function reactToAward(pts, btn){
+  if(bc && !PUBLIC) bc.postMessage({t:"fx", pts});
+  if(RM) return;
+  if(pts > 0){
+    // floating +N from the button toward the tree
+    const fly = document.createElement("div");
+    fly.className = "flypts" + (pts===2 ? "" : " gold");
+    fly.textContent = "+" + pts;
+    const b = btn.getBoundingClientRect();
+    fly.style.left = (b.left + b.width/2 - 12) + "px";
+    fly.style.top = (b.top - 6) + "px";
+    document.body.appendChild(fly);
+    const panel = $("#treePanel").getBoundingClientRect();
+    const tx = (panel.left + panel.width*0.5) - (b.left + b.width/2);
+    const ty = (panel.top + panel.height*0.42) - b.top;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      fly.style.transform = `translate(${tx}px, ${ty}px) scale(.55)`;
+      fly.style.opacity = "0";
+    }));
+    setTimeout(()=>fly.remove(), 1100);
+    // leaf burst at the canopy (big for 2, small for 1)
+    setTimeout(()=> leafBurst(pts===2 ? 10 : 3), 550);
+  } else {
+    // 0 points: the tree still grows — just quietly, with a couple of leaves
+    setTimeout(()=> leafBurst(2), 400);
+  }
+}
+
+function leafBurst(count){
+  const fx = $("#fx");
+  const g = growthProgress();
+  for(let i=0;i<count;i++){
+    const p = document.createElement("i");
+    p.className = "leafp burst" + (Math.random()<.4?" dark":"") + (g>=0.6 && Math.random()<.3 ? " petal":"");
+    const ang = Math.random()*Math.PI*2;
+    const dist = 30 + Math.random()*55;
+    p.style.setProperty("--dx", Math.cos(ang)*dist + "px");
+    p.style.setProperty("--dy", (Math.sin(ang)*dist - 20) + "px");
+    p.style.setProperty("--rot", (Math.random()*260-130) + "deg");
+    p.style.left = "calc(50% + " + (Math.random()*40-20) + "px)";
+    p.style.top = "calc(40% + " + (Math.random()*30-15) + "px)";
+    fx.appendChild(p);
+    setTimeout(()=>p.remove(), 900);
+  }
+}
+
+/* ---------- Ambient falling leaves ---------- */
+setInterval(()=>{
+  if(RM) return;
+  if($("#gameStage").classList.contains("hidden")) return;
+  if(growthProgress() < 0.25) return;
+  const fx = $("#fx");
+  const p = document.createElement("i");
+  p.className = "leafp fall" + (Math.random()<.5?" dark":"") + (growthProgress()>=0.6 && Math.random()<.35 ? " petal":"");
+  p.style.left = "calc(50% + " + (Math.random()*90-45) + "px)";
+  p.style.top = "38%";
+  p.style.setProperty("--dx", (Math.random()*70-35) + "px");
+  p.style.setProperty("--dy", (110 + Math.random()*60) + "px");
+  p.style.setProperty("--rot", (Math.random()*360-180) + "deg");
+  p.style.animationDuration = (2.6 + Math.random()*1.6) + "s";
+  fx.appendChild(p);
+  setTimeout(()=>p.remove(), 4600);
+}, 2400);
+
+/* ---------- Tree growth ---------- */
+function updateTree(score, reset=false){ applyTree(reset ? 0 : growthProgress(), score); }
+function applyTree(g, score){
+  const trunkScale = 0.12 + 0.88*Math.min(1, g*1.6);
+
+  $("#trunk").style.transform = `scaleY(${trunkScale})`;
+  $("#sprout").style.opacity = g < 0.15 ? 1 : 0;
+  $("#sprout").style.transform = `scale(${0.7 + g*1.2})`;
+
+  // clusters pop in bottom-up as rounds are completed
+  const clusters = document.querySelectorAll("#canopy .cluster");
+  const visible = Math.ceil(g * clusters.length);
+  clusters.forEach((c,i)=> c.classList.toggle("on", i < visible));
+
+  setFade("#flowers", g>=0.6);
+  showFruit(g>=0.8);
+  setFade("#sun", g>=0.3);
+  $("#sunGlow").style.opacity = g>=0.8 ? .35 : 0;
+  setFade("#birds", g>=0.9);
+  $("#butterfly").classList.toggle("on", g>=0.6 && !RM);
+
+  // sky warms up as the tree grows
+  $("#skyGold").style.opacity = (g*0.55).toFixed(2);
+}
+function setFade(sel, on){ const el=$(sel); if(el) el.style.opacity = on ? 1 : 0; }
+function showFruit(on){
+  document.querySelectorAll("#fruitG .fruit").forEach((f,i)=>{
+    f.style.opacity = on ? 1 : 0;
+    f.style.transform = on ? "scale(1)" : "scale(0)";
+    f.style.transitionDelay = on ? (i*70)+"ms" : "0ms";
+  });
+}
+
+/* ---------- La Tiendita del Árbol: canje de puntos ---------- */
+const PRIZES = [
+  { n:"Sticker", e:"\u2B50", c:2 },
+  { n:"Paleta", e:"\uD83C\uDF6D", c:3 },
+  { n:"Lápiz decorado", e:"\u270F\uFE0F", c:5 },
+  { n:"Burbujas", e:"\uD83E\uDEE7", c:7 },
+  { n:"Mini libreta", e:"\uD83D\uDCD2", c:9 },
+  { n:"Squishy / slime", e:"\uD83D\uDC19", c:12 },
+  { n:"Premio sorpresa grande", e:"\uD83C\uDF81", c:18 }
+];
+let cart = [];
+
+function renderStore(points){
+  cart = PRIZES.map(()=>0);
+  drawStore(points);
+}
+function drawStore(points){
+  const spent = cart.reduce((s,q,i)=> s + q*PRIZES[i].c, 0);
+  const left = points - spent;
+  const box = $("#store");
+  box.innerHTML = "";
+
+  const h = document.createElement("h3");
+  h.textContent = "\uD83C\uDF33 La Tiendita del Árbol";
+  const bal = document.createElement("div");
+  bal.className = "bal";
+  bal.textContent = `Puntos disponibles: ${left} de ${points}`;
+  box.append(h, bal);
+
+  PRIZES.forEach((pz,i)=>{
+    const row = document.createElement("div");
+    row.className = "prize" + (cart[i]>0 ? " got" : "");
+    const e = document.createElement("span"); e.className="pe"; e.textContent = pz.e;
+    const n = document.createElement("span"); n.className="pn"; n.textContent = pz.n;
+    const c = document.createElement("span"); c.className="pc"; c.textContent = pz.c + " pts";
+    const sub = document.createElement("button");
+    sub.type="button"; sub.className="pbtn sub"; sub.textContent="\u2212";
+    sub.disabled = cart[i]===0;
+    sub.addEventListener("click", ()=>{ if(cart[i]>0){ cart[i]--; drawStore(points); } });
+    const q = document.createElement("span"); q.className="qty"; q.textContent = cart[i];
+    const add = document.createElement("button");
+    add.type="button"; add.className="pbtn add"; add.textContent="+";
+    add.disabled = pz.c > left;
+    add.addEventListener("click", ()=>{ if(pz.c <= left){ cart[i]++; drawStore(points); } });
+    row.append(e,n,c,sub,q,add);
+    box.appendChild(row);
+  });
+
+  const f = document.createElement("div");
+  f.className = "freebie";
+  f.textContent = "\u2B50 Todos se llevan 1 sticker por participar, ¡gracias por jugar!";
+  box.appendChild(f);
+  sendState();
+}
+
+/* ---------- Finish ---------- */
+function finish(early=false){
+  const t = totalScore();
+  const answered = awards.filter(qDone).length;
+  $("#barFill").style.width = "100%";
+  $("#gameStage").classList.add("hidden");
+  $("#endScreen").classList.remove("hidden");
+  $("#endScore").textContent = t;
+  $("#endMaxN").textContent = items.length*2;
+  finalPoints = t;
+  lastCelebrate = !early;
+  screen = "end";
+  renderStore(t);
+
+  let msg;
+  if(early) msg = `Prueba terminada en la pregunta ${answered} de ${items.length}. ¡Tu árbol creció con tu esfuerzo!`;
+  else msg = "¡Tu árbol creció, floreció y dio frutos! Gracias por jugar.";
+  $("#endMsg").textContent = msg;
+  $("#endTitle").textContent = early ? "Prueba finalizada" : "¡Árbol en su máximo esplendor!";
+
+  const holder = $("#endTreeHolder");
+  holder.innerHTML = "";
+  const clone = $("#treeSvg").cloneNode(true);
+  clone.removeAttribute("id");
+  clone.style.height = "210px";
+  holder.appendChild(clone);
+
+  if(!early && !RM) celebrate();
+}
+
+function celebrate(){
+  const box = $("#confetti");
+  box.innerHTML = "";
+  const colors = ["#7fca7f","#4c9a5a","#f39ac0","#f7b7d3","#f4b740","#e79b1e"];
+  for(let i=0;i<46;i++){
+    const c = document.createElement("i");
+    if(Math.random()<.5) c.classList.add("petal");
+    c.style.background = colors[Math.floor(Math.random()*colors.length)];
+    c.style.left = Math.random()*100 + "%";
+    c.style.setProperty("--h", (window.innerHeight*0.7 + Math.random()*120) + "px");
+    c.style.setProperty("--sway", (Math.random()*120-60) + "px");
+    c.style.setProperty("--rot", (Math.random()*720-360) + "deg");
+    c.style.animationDuration = (3 + Math.random()*2.5) + "s";
+    c.style.animationDelay = (Math.random()*1.4) + "s";
+    const s = 8 + Math.random()*8;
+    c.style.width = s+"px"; c.style.height = s+"px";
+    box.appendChild(c);
+  }
+  // birds fly across
+  const fly = document.createElement("div");
+  fly.className = "flyby";
+  fly.innerHTML = '<svg width="72" height="30" viewBox="0 0 72 30"><path d="M6 16 q8 -10 16 0 q8 -10 16 0" fill="none" stroke="#4a5a4d" stroke-width="3" stroke-linecap="round"/><path d="M40 8 q6 -8 12 0 q6 -8 12 0" fill="none" stroke="#4a5a4d" stroke-width="2.5" stroke-linecap="round"/></svg>';
+  $("#endScreen").appendChild(fly);
+  setTimeout(()=>fly.remove(), 6000);
+  setTimeout(()=>box.innerHTML="", 8000);
+}
+
+$("#againBtn").addEventListener("click", ()=> startGame(group, mode));
+$("#switchBtn").addEventListener("click", ()=>{
+  $("#endScreen").classList.add("hidden");
+  $("#gameStage").classList.add("hidden");
+  status.style.visibility = "hidden";
+  $("#skyGold").style.opacity = 0;
+  $("#startScreen").classList.remove("hidden");
+  screen = "start";
+  sendState();
+});
+
+/* ==================== Modo presentador (sincronización) ==================== */
+let bc = null;
+try{ bc = new BroadcastChannel("arbol-del-saber"); }catch(e){ bc = null; }
+
+function currentState(){
+  if(screen==="game"){
+    let prompt;
+    if(!isImpostor()) prompt = "¿En qué se parecen estas palabras?";
+    else prompt = (phase===1) ? "¿Cuál es el impostor?" : "¿En qué se relacionan estas dos palabras?";
+    return { t:"estado", screen:"game", qNum:idx+1, qTotal:items.length, prompt,
+      words: oral ? null : curWords, score: totalScore(), growth: growthProgress() };
+  }
+  if(screen==="end"){
+    return { t:"estado", screen:"end", score: finalPoints, max: items.length*2,
+      title: $("#endTitle").textContent, msg: $("#endMsg").textContent,
+      growth: growthProgress(), cart: cart.slice(), celebrate: lastCelebrate };
+  }
+  return { t:"estado", screen:"start" };
+}
+function sendState(){
+  if(!bc || PUBLIC) return;
+  try{ bc.postMessage(currentState()); }catch(e){}
+}
+
+let pubLastScreen = null;
+function applyState(m){
+  $("#pubWait").classList.add("hidden");
+  if(m.screen==="start"){
+    $("#gameStage").classList.add("hidden");
+    $("#endScreen").classList.add("hidden");
+    $("#pubWait").classList.remove("hidden");
+    $("#pubWaitTitle").textContent = "¡Preparados!";
+    $("#pubWaitMsg").textContent = "El juego va a comenzar\u2026";
+    $("#status").style.visibility = "hidden";
+    $("#skyGold").style.opacity = 0;
+    pubGrowth = 0; applyTree(0, 0);
+  } else if(m.screen==="game"){
+    $("#endScreen").classList.add("hidden");
+    $("#gameStage").classList.remove("hidden");
+    $("#status").style.visibility = "visible";
+    $("#qNum").textContent = `Pregunta ${m.qNum} de ${m.qTotal}`;
+    $("#roundVal").textContent = `${m.qNum}/${m.qTotal}`;
+    $("#scoreVal").textContent = m.score;
+    $("#barFill").style.width = ((m.qNum-1)/m.qTotal)*100 + "%";
+    $("#promptWrap").innerHTML = `<p class="prompt">${m.prompt}</p>`;
+    const w = $("#words");
+    w.className = "words" + (m.words && m.words.length===3 ? " older" : "");
+    w.innerHTML = m.words ? chipsHTML(m.words, false) : LISTEN;
+    curWords = m.words || [];
+    pubGrowth = m.growth;
+    applyTree(m.growth, m.score);
+  } else if(m.screen==="end"){
+    $("#gameStage").classList.add("hidden");
+    $("#endScreen").classList.remove("hidden");
+    $("#endScore").textContent = m.score;
+    $("#endMaxN").textContent = m.max;
+    $("#endTitle").textContent = m.title;
+    $("#endMsg").textContent = m.msg;
+    pubGrowth = m.growth;
+    applyTree(m.growth, m.score);
+    const holder = $("#endTreeHolder");
+    holder.innerHTML = "";
+    const clone = $("#treeSvg").cloneNode(true);
+    clone.removeAttribute("id");
+    clone.style.height = "210px";
+    holder.appendChild(clone);
+    cart = (m.cart || PRIZES.map(()=>0)).slice();
+    drawStore(m.score);
+    if(pubLastScreen!=="end" && m.celebrate && !RM) celebrate();
+  }
+  pubLastScreen = m.screen;
+}
+
+let lastBeat = 0;
+if(bc && !PUBLIC){
+  bc.onmessage = e=>{
+    const m = e.data;
+    if(m && (m.t==="hola" || m.t==="latido")){
+      lastBeat = Date.now();
+      if(m.t==="hola") sendState();
+    }
+  };
+  $("#projPill").style.display = "";
+  setInterval(()=>{
+    const ok = Date.now()-lastBeat < 5500;
+    $("#projV").textContent = ok ? "\u2713" : "\u2014";
+    $("#projV").style.color = ok ? "var(--accent)" : "#b0665a";
+  }, 1000);
+}
+if(bc && PUBLIC){
+  bc.onmessage = e=>{
+    const m = e.data;
+    if(!m) return;
+    if(m.t==="estado") applyState(m);
+    else if(m.t==="fx") leafBurst(m.pts===2 ? 10 : m.pts===1 ? 3 : 2);
+  };
+  bc.postMessage({t:"hola"});
+  setInterval(()=> bc.postMessage({t:"latido"}), 2000);
+}
+if(PUBLIC){
+  document.body.classList.add("publico");
+  $("#startScreen").classList.add("hidden");
+  $("#pubWait").classList.remove("hidden");
+  if(!bc){
+    $("#pubWaitTitle").textContent = "Navegador no compatible";
+    $("#pubWaitMsg").textContent = "Esta vista requiere un navegador moderno (Chrome, Edge, Firefox o Safari reciente).";
+  }
+}
+$("#openPublicBtn").addEventListener("click", ()=>{
+  const u = new URL(location.href);
+  u.searchParams.set("vista","publico");
+  window.open(u.toString(), "arbolPublico");
+});
+</script>
+</body>
+</html>
